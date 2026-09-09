@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h2 class="h3 fw-bold mb-0">Invoice Ledger & Operations</h2>
+        <small class="text-muted">Manage scheduled billing runs and accounts receivable</small>
+    </div>
+
+    <div class="d-flex gap-2">
+        <!-- Trigger Monthly Billing -->
+        <form action="{{ url_for('billing.trigger_monthly_run') }}" method="POST" class="d-flex align-items-center gap-2 bg-white p-2 border rounded shadow-sm">
+            <label class="small fw-semibold text-secondary">Billing Cycle:</label>
+            <input type="number" name="month" class="form-control form-control-sm" style="width: 70px;" value="9" min="1" max="12" required>
+            <input type="number" name="year" class="form-control form-control-sm" style="width: 85px;" value="2026" required>
+            <button type="submit" class="btn btn-sm btn-primary text-nowrap">Run Billing</button>
+        </form>
+
+        <!-- Apply Late Fees -->
+        <form action="{{ url_for('billing.trigger_late_fees') }}" method="POST" class="d-flex align-items-center gap-2 bg-white p-2 border rounded shadow-sm">
+            <input type="date" name="cutoff_date" class="form-control form-control-sm" required>
+            <button type="submit" class="btn btn-sm btn-outline-danger text-nowrap">Apply Late Fees</button>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Invoice #</th>
+                    <th>Unit</th>
+                    <th>Tenant</th>
+                    <th>Type</th>
+                    <th>Due Date</th>
+                    <th>Amount Due</th>
+                    <th>Amount Paid</th>
+                    <th>Status</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invoices %}
+                <tr>
+                    <td class="fw-semibold">#INV-{{ inv.id }}</td>
+                    <td><span class="badge bg-light text-dark border">{{ inv.lease.unit.unit_number }}</span></td>
+                    <td>{{ inv.lease.tenant.first_name }} {{ inv.lease.tenant.last_name }}</td>
+                    <td><span class="badge bg-secondary text-uppercase">{{ inv.charge_type.replace('_', ' ') }}</span></td>
+                    <td>{{ inv.due_date.strftime('%Y-%m-%d') }}</td>
+                    <td>${{ "%.2f"|format(inv.amount_due) }}</td>
+                    <td class="text-success fw-semibold">${{ "%.2f"|format(inv.amount_paid) }}</td>
+                    <td>
+                        <span class="badge {% if inv.status == 'paid' %}bg-success{% elif inv.status == 'overdue' %}bg-danger{% elif inv.status == 'partially_paid' %}bg-info text-dark{% else %}bg-warning text-dark{% endif %}">
+                            {{ inv.status.replace('_', ' ') }}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        {% if inv.status != 'paid' %}
+                        <button class="btn btn-sm btn-outline-success" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#payModal" 
+                                data-invoice-id="{{ inv.id }}" 
+                                data-balance="{{ inv.amount_due - inv.amount_paid }}">
+                            Record Payment
+                        </button>
+                        {% else %}
+                        <span class="text-muted small"><i class="bi bi-check2-circle text-success me-1"></i>Settled</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center py-4 text-muted">
+                        No invoices generated yet. Use the control above to run billing.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal fade" id="payModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="paymentForm" method="POST">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Record Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">Enter the payment amount and method received from the tenant.</p>
+                    <div class="mb-3">
+                        <label class="form-label">Payment Amount ($)</label>
+                        <input type="number" step="0.01" min="0.01" name="amount" id="modalAmount" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Payment Method</label>
+                        <select name="method" class="form-select" required>
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="card">Credit/Debit Card</option>
+                            <option value="ach">ACH</option>
+                            <option value="check">Check</option>
+                            <option value="cash">Cash</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reference / Transaction # (Optional)</label>
+                        <input type="text" name="reference_no" class="form-control" placeholder="Leave blank to auto-generate">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Confirm Payment</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const payModal = document.getElementById('payModal');
+    payModal.addEventListener('show.bs.modal', event => {
+        const button = event.relatedTarget;
+        const invoiceId = button.getAttribute('data-invoice-id');
+        const remainingBalance = button.getAttribute('data-balance');
+
+        const form = document.getElementById('paymentForm');
+        form.action = `/billing/pay/${invoiceId}`;
+
+        const amountInput = document.getElementById('modalAmount');
+        amountInput.value = parseFloat(remainingBalance).toFixed(2);
+        amountInput.max = remainingBalance;
+    });
+</script>
+{% endblock %}

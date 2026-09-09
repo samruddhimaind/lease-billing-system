@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h3 class="mb-4 fw-bold">Unit Occupancy Analytics</h3>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 text-center p-3">
+            <h6 class="text-muted">Total Units</h6>
+            <h2 class="fw-bold text-dark">{{ data.total_units or 0 }}</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 text-center p-3">
+            <h6 class="text-muted">Occupied Units</h6>
+            <h2 class="fw-bold text-primary">{{ data.occupied_units or 0 }}</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 text-center p-3">
+            <h6 class="text-muted">Vacant Units</h6>
+            <h2 class="fw-bold text-secondary">{{ data.vacant_units or 0 }}</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 text-center p-3">
+            <h6 class="text-muted">Occupancy Rate</h6>
+            <h2 class="fw-bold text-success">{{ data.occupancy_rate or 0 }}%</h2>
+        </div>
+    </div>
+</div>
+{% endblock %}

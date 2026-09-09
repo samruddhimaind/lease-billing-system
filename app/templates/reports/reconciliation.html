@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h3 class="mb-4 fw-bold">Financial Reconciliation</h3>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-striped table-hover mb-0 align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Charge Type</th>
+                    <th>Invoices Issued</th>
+                    <th>Total Billed</th>
+                    <th>Total Collected</th>
+                    <th>Outstanding Balance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in records %}
+                <tr>
+                    <td class="text-capitalize fw-semibold">{{ row.charge_type.replace('_', ' ') }}</td>
+                    <td>{{ row.invoice_count }}</td>
+                    <td>${{ "%.2f"|format(row.total_billed) }}</td>
+                    <td class="text-success fw-semibold">${{ "%.2f"|format(row.total_collected) }}</td>
+                    <td class="text-danger fw-semibold">${{ "%.2f"|format(row.total_outstanding) }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">No financial records found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
