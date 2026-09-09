@@ -1,3 +1,5 @@
+from flask import send_file
+from app.services.pdf_generator import generate_invoice_pdf
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app import db
 from app.models import Invoice, Payment
@@ -89,3 +91,15 @@ def record_payment(invoice_id):
         flash(f"Transaction failed: {str(e)}", "danger")
 
     return redirect(url_for('billing.list_invoices'))
+@bp.route('/invoice/<int:invoice_id>/download-pdf', methods=['GET'])
+def download_invoice_pdf(invoice_id):
+    invoice = Invoice.query.get_or_404(invoice_id)
+    pdf_buffer = generate_invoice_pdf(invoice)
+
+    filename = f"Invoice_{invoice.id}_{invoice.lease.tenant.last_name}.pdf"
+    return send_file(
+        pdf_buffer,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/pdf'
+    )
