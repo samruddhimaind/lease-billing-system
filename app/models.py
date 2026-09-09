@@ -1,3 +1,5 @@
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 from datetime import datetime
 
@@ -81,3 +83,19 @@ class Payment(db.Model):
         nullable=False
     )
     reference_no = db.Column(db.String(100), unique=True, nullable=False)
+class User(UserMixin, db.Model):
+    __tablename__ = 'users'
+
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.Enum('admin', 'tenant'), default='tenant', nullable=False)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('tenants.id', ondelete='SET NULL'), nullable=True)
+
+    tenant = db.relationship('Tenant', backref=db.backref('user_account', uselist=False))
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
