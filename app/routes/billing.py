@@ -1,3 +1,6 @@
+from flask_mail import Message
+from app import mail
+from app.services.pdf_generator import generate_invoice_pdf
 from flask import send_file
 from app.services.pdf_generator import generate_invoice_pdf
 from flask import Blueprint, render_template, request, redirect, url_for, flash
@@ -103,3 +106,35 @@ def download_invoice_pdf(invoice_id):
         download_name=filename,
         mimetype='application/pdf'
     )
+@bp.route('/invoice/<int:invoice_id>/email', methods=['POST'])
+def email_invoice(invoice_id):
+    invoice = Invoice.query.get_or_404(invoice_id)
+    tenant = invoice.lease.tenant
+
+    # Generate PDF buffer in memory
+    pdf_buffer = generate_invoice_pdf(invoice)
+    filename = f"Invoice_{invoice.id}_{tenant.last_name}.pdf"
+
+    # Create message
+    msg = Message(
+        subject=f"PropertyLedger Invoice #INV-{invoice.id} - Due {invoice.due_date}",
+        recipients=[tenant.email],
+        body=(
+            f"Dear {tenant.first_name},\n\n"
+            f"Please find attached your invoice for Unit {invoice.lease.unit.unit_number}.\n\n"
+            f"Total Due: ${invoice.amount_due:.2f}\n"
+            f"Due Date: {invoice.due_date}\n\n"
+            f"Thank you,\nProperty Management Team"
+        )
+    )
+
+    # Attach PDF
+    msg.attach(filename, "application/pdf", pdf_buffer.getvalue())
+
+    try:
+        mail.send(msg)
+        flash(f"Invoice #INV-{invoice.id} successfully sent to {tenant.email}.", "success")
+    except Exception as e:
+        flash(f"Failed to send email: {str(e)}", "danger")
+
+    return redirect(url_for('billing.list_invoices'))

@@ -63,6 +63,11 @@
            title="Download PDF">
             <i class="bi bi-file-earmark-pdf"></i> PDF
         </a>
+<form action="{{ url_for('billing.email_invoice', invoice_id=inv.id) }}" method="POST" class="d-inline">
+    <button type="submit" class="btn btn-sm btn-outline-primary" title="Email Invoice to Tenant">
+        <i class="bi bi-envelope"></i> Email
+    </button>
+</form>
 
         <!-- Payment Actions -->
         {% if inv.status != 'paid' %}

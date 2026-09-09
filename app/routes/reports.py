@@ -1,3 +1,6 @@
+from datetime import date, timedelta
+from flask import Blueprint, render_template
+from app.models import Lease
 from flask import Blueprint, render_template
 from app import db
 from sqlalchemy import text
@@ -33,3 +36,29 @@ def financial_reconciliation():
     """)
     records = db.session.execute(query).mappings().all()
     return render_template('reports/reconciliation.html', records=records)
+@bp.route('/expirations', methods=['GET'])
+def lease_expirations():
+    today = date.today()
+    in_90_days = today + timedelta(days=90)
+
+    # Query active leases expiring within the next 90 days
+    expiring_leases = (
+        Lease.query
+        .filter(Lease.status == 'active')
+        .filter(Lease.end_date >= today)
+        .filter(Lease.end_date <= in_90_days)
+        .order_by(Lease.end_date.asc())
+        .all()
+    )
+
+    # Calculate remaining days and categorize urgency levels
+    report_data = []
+    for lease in expiring_leases:
+        days_left = (lease.end_date - today).days
+        report_data.append({
+            'lease': lease,
+            'days_left': days_left,
+            'urgency': 'danger' if days_left <= 30 else ('warning' if days_left <= 60 else 'info')
+        })
+
+    return render_template('reports/expirations.html', records=report_data, today=today)
